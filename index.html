@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=0.7">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Water Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #e0f7fa;
+      color: #00796b;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .counter {
+      font-size: 18px;
+      margin: 10px 0;
+    }
+
+    .grid {
+      justify-content:center;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .glass {
+      background: #b2dfdb;
+      padding: 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .glass input[type="checkbox"] {
+      transform: scale(1.5);
+      margin-top: 10px;
+    }
+
+    .glass.checked {
+      background: #4db6ac;
+      color: white;
+    }
+
+    .reset {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background: #00796b;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .reset:hover {
+      background: #004d40;
+    }
+  </style>
+</head>
+<body>
+  <h1>💧 Water Intake Tracker</h1>
+  <div class="counter">Glasses Drunk: <span id="count">0</span>/16</div>
+  <div class="grid" id="glassGrid"></div>
+  <button class="reset" onclick="resetTracker()">Reset</button>
+
+<script>
+  const grid = document.getElementById('glassGrid');
+  const countDisplay = document.getElementById('count');
+  const STORAGE_KEY = 'waterTrackerStatus';
+
+  for (let i = 1; i <= 16; i++) {
+    const div = document.createElement('div');
+    div.className = 'glass';
+    div.setAttribute('data-index', i);
+    div.innerHTML = `Hour ${i}<br><input type="checkbox" />`;
+
+    div.querySelector('input').addEventListener('change', () => {
+      div.classList.toggle('checked');
+      updateCount();
+      saveStatus();
+    });
+
+    grid.appendChild(div);
+  }
+
+  function updateCount() {
+    const checked = document.querySelectorAll('.glass.checked').length;
+    countDisplay.textContent = checked;
+  }
+
+  function saveStatus() {
+    const status = [];
+    document.querySelectorAll('.glass input').forEach(cb => {
+      status.push(cb.checked);
+    });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(status));
+  }
+
+  function loadStatus() {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (saved) {
+      document.querySelectorAll('.glass input').forEach((cb, i) => {
+        cb.checked = saved[i];
+        if (saved[i]) {
+          cb.parentElement.classList.add('checked');
+        }
+      });
+      updateCount();
+    }
+  }
+
+  function resetTracker() {
+    document.querySelectorAll('.glass input').forEach(cb => {
+      cb.checked = false;
+      cb.parentElement.classList.remove('checked');
+    });
+    localStorage.removeItem(STORAGE_KEY);
+    updateCount();
+  }
+
+  // Ask notification permission
+  function askNotificationPermission() {
+    if ('Notification' in window) {
+      if (Notification.permission !== 'granted') {
+        Notification.requestPermission();
+      }
+    }
+  }
+
+  // Send notification
+  function sendNotification(message) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(message);
+    }
+  }
+
+  // Check hourly and notify
+  function hourlyNotifier() {
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+
+    // Notify only at exact hour from 5AM to 9PM
+    if (minute === 0 && hour >= 5 && hour <= 21) {
+      sendNotification(`Time to drink water! (${hour}:00)`);
+    }
+  }
+
+  // Start checking every minute
+  setInterval(hourlyNotifier, 60000);
+
+  window.onload = () => {
+    askNotificationPermission();
+    loadStatus();
+  };
+</script>
